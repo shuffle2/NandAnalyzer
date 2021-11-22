@@ -1,6 +1,10 @@
 # NandAnalyzer
 NAND (JEDEC / ONFI) Analyzer for Saleae Logic
 
+The plugin was only tested against NV-DDR2 traces (and I use the term "test" lightly).
+
+You can process traces with less then 8 data bits at a time and merge them in a post-process step (assuming the traffic is identical between runs). This is helpful because the Saleae Pro 16 can only do 500MS/s on 6 channels, so it's not possible to capture 8bit bus at full speed in single trace.
+
 ## build
 clone the repo with submodules
 

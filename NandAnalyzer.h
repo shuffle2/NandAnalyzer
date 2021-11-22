@@ -104,6 +104,14 @@ struct NandAnalyzerChannels {
 
 class NandAnalyzer : public Analyzer2 {
  public:
+  enum FrameType {
+    kInvalid,
+    kEnvelope,
+    kCommand,
+    kAddress,
+    kData,
+  };
+
   NandAnalyzer();
   virtual ~NandAnalyzer() final;
   virtual void WorkerThread() final;
@@ -123,6 +131,14 @@ class NandAnalyzer : public Analyzer2 {
   virtual bool NeedsRerun() final { return false; }
 
   virtual void SetupResults() final;
+
+  U8 SyncAndReadDQ(U64 sample_number);
+  bool AddFrame(FrameType frame_type,
+                U64 start,
+                U64 end = 0,
+                U64 data1 = 0,
+                U64 data2 = 0,
+                U8 flags = 0);
 
   static constexpr const char* name_{"NAND"};
   NandAnalyzerSettings settings_;
