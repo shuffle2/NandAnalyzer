@@ -151,29 +151,49 @@ void NandAnalyzerResults::GenerateExportFile(const char* file,
                                              U32 export_type_user_id) {
   std::ofstream file_stream(file, std::ios::out);
 
-  struct Packet {
-    std::optional<U8> cmd{};
-    std::vector<U8> addr;
+  struct Cycle {
+    NandAnalyzer::FrameType frame_type{NandAnalyzer::FrameType::kInvalid};
     std::vector<U8> data;
-  } merged_packet;
+  };
+  using Packet = std::vector<Cycle>;
+  Packet merged_packet;
 
   auto write_packet = [&file_stream](const Packet& packet) {
-    if (packet.cmd.has_value()) {
-      std::string line;
-      line += std::format("CMD:{:02x}", packet.cmd.value());
-      if (packet.addr.size()) {
-        line += " ADDR:";
-        for (const auto& addr : packet.addr) {
-          line += std::format("{:02x}", addr);
-        }
+    if (!packet.size()) {
+      return;
+    }
+    std::string line;
+    bool first = true;
+    for (const auto& e : packet) {
+      if (first) {
+        first = false;
+      } else {
+        line += " ";
       }
-      if (packet.data.size()) {
-        line += " DATA:";
-        for (const auto& val : packet.data) {
-          line += std::format("{:02x}", val);
-        }
+      switch (e.frame_type) {
+      case NandAnalyzer::FrameType::kCommand:
+        line += "CMD:";
+        break;
+      case NandAnalyzer::FrameType::kAddress:
+        line += "ADDR:";
+        break;
+      case NandAnalyzer::FrameType::kData:
+        line += "DATA:";
+        break;
       }
-      file_stream << line << std::endl;
+      for (const auto& addr : e.data) {
+        line += std::format("{:02x}", addr);
+      }
+    }
+    file_stream << line << std::endl;
+  };
+
+  auto append_cycle = [](Packet* packet, NandAnalyzer::FrameType frame_type,
+                         U8 data) {
+    if (packet->size() && packet->back().frame_type == frame_type) {
+      packet->back().data.push_back(data);
+    } else {
+      packet->emplace_back(Cycle{.frame_type = frame_type, .data = {data}});
     }
   };
 
@@ -189,13 +209,13 @@ void NandAnalyzerResults::GenerateExportFile(const char* file,
       merged_packet = {};
       break;
     case NandAnalyzer::FrameType::kCommand:
-      merged_packet.cmd = data;
+      append_cycle(&merged_packet, NandAnalyzer::FrameType::kCommand, data);
       break;
     case NandAnalyzer::FrameType::kAddress:
-      merged_packet.addr.push_back(data);
+      append_cycle(&merged_packet, NandAnalyzer::FrameType::kAddress, data);
       break;
     case NandAnalyzer::FrameType::kData:
-      merged_packet.data.push_back(data);
+      append_cycle(&merged_packet, NandAnalyzer::FrameType::kData, data);
       break;
     }
 
